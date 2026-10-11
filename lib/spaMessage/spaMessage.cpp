@@ -379,6 +379,7 @@ void spaMessageLoop()
   }
   spaFaultLogHistoryTimeoutTick();
   spaPanelClockAutoSyncTick();
+  spaLightShowTick();
 }
 
 void configurationRequest()
@@ -697,8 +698,11 @@ Byte	Name	Description/Values
 25-26	??	0
 */
 
+unsigned long spaStatusLastRxMs = 0;
+
 bool parseStatusMessage(u_int8_t *message, int length)
 {
+  spaStatusLastRxMs = millis();
 
   if (spaStatusData.crc != message[message[1]])
   {

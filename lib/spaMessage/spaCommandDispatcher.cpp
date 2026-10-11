@@ -1182,3 +1182,131 @@ void spaPanelClockAutoSyncAppendToJson(JsonObject root)
   }
 #endif
 }
+
+namespace
+{
+// Balboa 0x11 toggle item codes for the two light outputs (HA discovery uses button/17 and button/18).
+const uint8_t kLight1ItemCode = 0x11;
+const uint8_t kLight2ItemCode = 0x12;
+
+enum LightShowPhase
+{
+  kLightShowIdle = 0,
+  kLightShowWaitSecondToggle,
+  kLightShowVerify,
+};
+
+LightShowPhase lightShowPhase = kLightShowIdle;
+uint8_t lightShowLight = 0;
+unsigned long lightShowPhaseStartMs = 0;
+
+bool lightShowIsOn(uint8_t light)
+{
+  return light == 1 ? spaStatusData.light1 : spaStatusData.light2;
+}
+
+uint8_t lightShowItemCode(uint8_t light)
+{
+  return light == 1 ? kLight1ItemCode : kLight2ItemCode;
+}
+} // namespace
+
+SpaCommandResult spaAdvanceLightShow(uint8_t light, SpaCommandSource source)
+{
+  if (light != 1 && light != 2)
+  {
+    return {false, SPA_COMMAND_INVALID_ARGUMENT, "invalid_light"};
+  }
+  if (!spaHasFreshStatus())
+  {
+    return {false, SPA_COMMAND_NOT_READY, "spa status not ready"};
+  }
+  if (spaConfigurationData.lastUpdate != 0)
+  {
+    const uint8_t present = light == 1 ? spaConfigurationData.light1 : spaConfigurationData.light2;
+    if (present == 0)
+    {
+      return {false, SPA_COMMAND_INVALID_ARGUMENT, "light_not_configured"};
+    }
+  }
+  if (lightShowPhase != kLightShowIdle)
+  {
+    return {false, SPA_COMMAND_NOT_READY, "light_show_change_in_progress"};
+  }
+
+  const uint8_t itemCode = lightShowItemCode(light);
+  if (!lightShowIsOn(light))
+  {
+    // Off for more than a few seconds: one toggle turns it on and the light resumes its last show.
+    return spaSendToggleCommand(itemCode, source);
+  }
+
+  SpaCommandResult result = spaSendToggleCommand(itemCode, source);
+  if (!result.accepted)
+  {
+    return result;
+  }
+  lightShowLight = light;
+  lightShowPhase = kLightShowWaitSecondToggle;
+  lightShowPhaseStartMs = millis();
+  Log.verbose(F("[Cmd ]: light %u next show: off toggle queued, on toggle in %u ms" CR),
+              light, (unsigned)LIGHT_SHOW_TOGGLE_GAP_MS);
+  return result;
+}
+
+void spaLightShowTick()
+{
+  if (lightShowPhase == kLightShowIdle)
+  {
+    return;
+  }
+
+  const unsigned long now = millis();
+  const uint8_t itemCode = lightShowItemCode(lightShowLight);
+
+  if (lightShowPhase == kLightShowWaitSecondToggle)
+  {
+    if (now - lightShowPhaseStartMs < LIGHT_SHOW_TOGGLE_GAP_MS)
+    {
+      return;
+    }
+    SpaCommandResult result = spaSendToggleCommand(itemCode, SPA_COMMAND_SOURCE_AUTO);
+    if (!result.accepted)
+    {
+      Log.warning(F("[Cmd ]: light %u next show: on toggle rejected (%s); light may be off" CR),
+                  lightShowLight, result.reason);
+      lightShowPhase = kLightShowIdle;
+      return;
+    }
+    lightShowPhase = kLightShowVerify;
+    lightShowPhaseStartMs = now;
+    return;
+  }
+
+  // kLightShowVerify: judge only on a status frame that arrived after the controller had time to act.
+  const unsigned long sinceSecond = now - lightShowPhaseStartMs;
+  const bool settledStatus = spaStatusLastRxMs != 0 &&
+                             (long)(spaStatusLastRxMs - lightShowPhaseStartMs) >= (long)LIGHT_SHOW_VERIFY_SETTLE_MS;
+  if (!settledStatus)
+  {
+    if (sinceSecond >= LIGHT_SHOW_VERIFY_TIMEOUT_MS)
+    {
+      Log.warning(F("[Cmd ]: light %u next show: no status to verify; leaving as is" CR), lightShowLight);
+      lightShowPhase = kLightShowIdle;
+    }
+    return;
+  }
+
+  if (!lightShowIsOn(lightShowLight))
+  {
+    // The controller dropped the on toggle. Re-send so the light does not stay off; the show may not advance.
+    SpaCommandResult result = spaSendToggleCommand(itemCode, SPA_COMMAND_SOURCE_AUTO);
+    Log.warning(F("[Cmd ]: light %u next show: on toggle dropped by controller; re-sent (%s)" CR),
+                lightShowLight, result.reason);
+  }
+  else
+  {
+    Log.verbose(F("[Cmd ]: light %u next show: done" CR), lightShowLight);
+  }
+  lightShowPhase = kLightShowIdle;
+}

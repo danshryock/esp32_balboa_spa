@@ -228,6 +228,19 @@ void mqttMessage(char *p_topic, byte *p_payload, unsigned int p_length)
       result = {false, SPA_COMMAND_INVALID_ARGUMENT, "invalid_temp_units_payload"};
     }
   }
+  else if (suffix.startsWith("lightShow/"))
+  {
+    // cmd/lightShow/<1|2>, any payload: step that light to its next colour/show.
+    int light = parseIntStrict(suffix.substring(10));
+    if (light != 1 && light != 2)
+    {
+      result = {false, SPA_COMMAND_INVALID_ARGUMENT, "invalid_light"};
+    }
+    else
+    {
+      result = spaAdvanceLightShow((uint8_t)light, SPA_COMMAND_SOURCE_MQTT);
+    }
+  }
   else if (suffix.startsWith("button/"))
   {
     String codeRaw = suffix.substring(7);

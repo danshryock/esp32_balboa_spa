@@ -210,6 +210,7 @@ To keep protocol risk low, command-write implementation is intentionally staged:
 - `Spa/<gateway>/cmd/button/<code>` ->
   - non-pump: `on`, `off`, `toggle`
   - pumps: `Off`, `Low`, `High` (single-speed pumps accept `Off`/`Low`)
+- `Spa/<gateway>/cmd/lightShow/<1|2>` -> any payload (e.g. `next`): step a multicolour light to its next colour/show. If the light is on, the gateway toggles it off and back on **`LIGHT_SHOW_TOGGLE_GAP_MS`** (default 450 ms) later, so the off time stays inside the ~1 s window that lights such as Balboa MoodEFX treat as "next show", then re-sends the on toggle once if settled status still shows the light off. If the light is off, one toggle turns it on (the light resumes its last show). Home Assistant gets a **Spa light 1/2 next show** button for each configured light.
 - Result telemetry: `Spa/<gateway>/cmd/result` JSON (`target`, `value`, `accepted`, `reason`)
 
 All command frame semantics should be validated against the ccutrer protocol reference before enabling each command family:

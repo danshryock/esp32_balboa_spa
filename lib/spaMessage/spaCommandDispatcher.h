@@ -15,6 +15,23 @@
 #define AUTO_SYNC_PANEL_CLOCK_THRESHOLD_MIN 2
 #endif
 
+/** Light "next show": gap between the off and on toggles. Multicolour lights (e.g. Balboa MoodEFX) step to the
+ *  next show only when power returns within ~1 s. On a BP501 400-700 ms was 15/15 reliable; 200-300 ms sometimes
+ *  had the second toggle dropped by the controller. */
+#ifndef LIGHT_SHOW_TOGGLE_GAP_MS
+#define LIGHT_SHOW_TOGGLE_GAP_MS 450
+#endif
+
+/** Light "next show": only judge the result on status frames received at least this long after the second toggle. */
+#ifndef LIGHT_SHOW_VERIFY_SETTLE_MS
+#define LIGHT_SHOW_VERIFY_SETTLE_MS 1000
+#endif
+
+/** Light "next show": give up verifying (no retry) if no settled status frame arrives within this time. */
+#ifndef LIGHT_SHOW_VERIFY_TIMEOUT_MS
+#define LIGHT_SHOW_VERIFY_TIMEOUT_MS 5000
+#endif
+
 struct SpaFilterSettingsData;
 
 enum SpaCommandSource
@@ -110,6 +127,12 @@ SpaCommandResult spaSendToggleOnNextCtsDiagnostic(
 
 /** Non-blocking once-per-boot panel clock sync when `AUTO_SYNC_PANEL_CLOCK` is set (tub builds). */
 void spaPanelClockAutoSyncTick();
+
+/** Step light 1 or 2 to its next show. Off: one toggle turns it on (the light resumes its last show).
+ *  On: toggle off, then on after LIGHT_SHOW_TOGGLE_GAP_MS; spaLightShowTick() sends the second toggle and
+ *  re-sends once if settled status still shows the light off. */
+SpaCommandResult spaAdvanceLightShow(uint8_t light, SpaCommandSource source = SPA_COMMAND_SOURCE_UNKNOWN);
+void spaLightShowTick();
 /** `GET /api/diagnostics` — `panelClockAutoSync` object (LOCAL_CLIENT builds only). */
 void spaPanelClockAutoSyncAppendToJson(JsonObject root);
 

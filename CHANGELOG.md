@@ -8,6 +8,10 @@ where version numbers are used.
 
 ## [Unreleased]
 
+### Added
+
+- **Light "next show" command** ([`lib/spaMessage/spaCommandDispatcher.cpp`](lib/spaMessage/spaCommandDispatcher.cpp), [`lib/mqttModule/mqttModule.cpp`](lib/mqttModule/mqttModule.cpp), [`lib/mqttModule/haMqttDiscovery.cpp`](lib/mqttModule/haMqttDiscovery.cpp)): MQTT **`cmd/lightShow/<1|2>`** and a Home Assistant **Spa light N next show** button per configured light. Multicolour spa lights (e.g. Balboa MoodEFX) step to the next show when power is cut and restored within ~1 s, but the controller only exposes an on/off toggle, so the panel's rapid presses could not be reproduced from Home Assistant (the light always came back on in its first show). The command sends the off toggle, then the on toggle after **`LIGHT_SHOW_TOGGLE_GAP_MS`** (default 450 ms; on a BP501, 400-700 ms was 15/15 reliable and 200-300 ms sometimes had the second toggle dropped). **`spaLightShowTick()`** checks a status frame received at least **`LIGHT_SHOW_VERIFY_SETTLE_MS`** after the second toggle and re-sends it once if the light is still off. **`spaStatusLastRxMs`** records every status frame, including unchanged ones that **`parseStatusMessage`** skips.
+
 ## [2.28.1] - 2026-10-09
 
 ### Added

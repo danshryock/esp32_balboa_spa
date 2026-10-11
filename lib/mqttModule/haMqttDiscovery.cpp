@@ -496,11 +496,13 @@ namespace
       retractDiscoveryConfig("binary_sensor", "light1");
       retractDiscoveryConfig("switch", "light1");
       retractDiscoveryConfig("light", "light1");
+      retractDiscoveryConfig("button", "light1_next_show");
       break;
     case HA_LIGHT2:
       retractDiscoveryConfig("binary_sensor", "light2");
       retractDiscoveryConfig("switch", "light2");
       retractDiscoveryConfig("light", "light2");
+      retractDiscoveryConfig("button", "light2_next_show");
       break;
     case HA_MISTER:
       retractDiscoveryConfig("sensor", "mister");
@@ -709,13 +711,25 @@ namespace
     retractWritableOverlapConfigs();
     publishClimate(macSlugStr);
     if (desired & HA_LIGHT1)
+    {
       publishLight(macSlugStr, "light1", "Spa light 1", "status", "light1", "button/17", "mdi:lightbulb", "On", "Off");
+      publishButton(macSlugStr, "light1_next_show", "Spa light 1 next show", "lightShow/1", "next", "mdi:palette");
+    }
     else
+    {
       retractDiscoveryConfig("light", "light1");
+      retractDiscoveryConfig("button", "light1_next_show");
+    }
     if (desired & HA_LIGHT2)
+    {
       publishLight(macSlugStr, "light2", "Spa light 2", "status", "light2", "button/18", "mdi:lightbulb", "On", "Off");
+      publishButton(macSlugStr, "light2_next_show", "Spa light 2 next show", "lightShow/2", "next", "mdi:palette");
+    }
     else
+    {
       retractDiscoveryConfig("light", "light2");
+      retractDiscoveryConfig("button", "light2_next_show");
+    }
     publishSwitch(macSlugStr, "blower", "Spa blower", "status", "blower", "button/12", nullptr, "On", "Off");
     publishSwitch(macSlugStr, "mister", "Spa mister", "status", "mister", "button/14", nullptr, "On", "Off");
     publishButton(macSlugStr, "sync_panel_time", "Spa sync panel clock", "syncTime", "1", "mdi:clock-check");

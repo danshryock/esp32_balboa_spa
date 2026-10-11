@@ -16,6 +16,8 @@ extern RTC_NOINIT_ATTR SpaFilterSettingsData spaFilterSettingsData;
 extern RTC_NOINIT_ATTR SpaPreferencesData spaPreferencesData;
 extern RTC_NOINIT_ATTR WiFiModuleConfigurationData wiFiModuleConfigurationData;
 extern RTC_NOINIT_ATTR SpaFaultLogData spaFaultLogData;
+/** millis() of the last status frame received, changed or not (parseStatusMessage skips unchanged frames). */
+extern unsigned long spaStatusLastRxMs;
 
 void spaMessageSetup();
 void spaMessageLoop();
